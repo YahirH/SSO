@@ -1,0 +1,82 @@
+#!/bin/bash
+sudo touch /var/log/HinojosaSec.log
+sudo yum update
+echo "Se actualizo el sistema " >> /var/log/walter.log
+
+chage --maxage 90 --mindays 0 --warndays 7 $(whoami)
+echo "Se actualizo el sistema " >> /var/log/walter.log
+
+echo "$(whoami) ALL=(ALL) NOPASSWD: ALL" | sudo tee -a /etc/sudoers
+echo "Se actualizo el sistema " >> /var/log/walter.log
+
+echo "# # # # # # # # # # # # # # # # # # # # # # # # # # # # #" >> /etc/motd 
+echo "#       Esto pertenece a <1966909>                      #" >> /etc/motd
+echo "#       Todas las actividades estan siendo              #" >> /etc/motd
+echo "#       monitoreadas por <WalterHinojosa> y los         #" >> /etc/motd
+echo "#       cambios no autorizados seran procesados.        #" >> /etc/motd
+echo "# # # # # # # # # # # # # # # # # # # # # # # # # # # # #" >> /etc/motd
+echo "Se actualizo el sistema " >> /var/log/walter.log
+
+echo "if [ "$(id -u)" -eq "$(id -u Walter)" ]; then" >> ~/.bashrc >> /var/log/HinojosaSec.log
+echo "    umask 007" >> ~/.bashrc >> /var/log/HinojosaSec.log
+echo "else" >> ~/.bashrc >> /var/log/HinojosaSec.log
+echo "    umask 022" >> ~/.bashrc >> /var/log/HinojosaSec.log
+echo "fi" >> ~/.bashrc >> /var/log/HinojosaSec.log
+echo "Se actualizo el sistema " >> /var/log/walter.log
+
+systemctl enable firewalld
+systemctl start firewalld
+firewall-cmd --set-default-zone=drop
+firewall-cmd --zone=public --add-masquerade --permanent
+firewall-cmd --zone=public --add-service=dhcp --permanent
+firewall-cmd --zone=public --add-service=dns --permanent
+firewall-cmd --zone=public --add-service=http --permanent
+firewall-cmd --zone=public --add-service=https --permanent
+firewall-cmd --reload
+echo "Se actualizo el sistema " >> /var/log/walter.log
+
+sed -i 's/SELINUX=enforcing/SELINUX=disabled/' /etc/selinux/config
+reboot
+echo "Se actualizo el sistema " >> /var/log/walter.log
+
+yum -y install epel-release
+yum -y install clamav clamav-update clamav-scanner-systemd
+freshclam
+sed -i 's/ScanOnAccess false/ScanOnAccess true/' /etc/clamd.d/scan.conf
+systemctl enable clamd@scan
+systemctl start clamd@scan
+echo "Se actualizo el sistema " >> /var/log/walter.log
+
+cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
+sed -i 's/#PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config
+echo "UseStrictModes yes" >> /etc/ssh/sshd_config
+sed -i 's/#LogLevel INFO/LogLevel INFO/' /etc/ssh/sshd_config
+systemctl restart sshd
+echo "Se actualizo el sistema " >> /var/log/walter.log
+
+echo "net.ipv4.tcp_syncookies = 1" >> /etc/sysctl.conf
+echo "net.ipv4.conf.all.rp_filter = 1" >> /etc/sysctl.conf
+echo "net.ipv4.conf.default.rp_filter = 1" >> /etc/sysctl.conf
+echo "net.ipv4.icmp_echo_ignore_all = 1" >> /etc/sysctl.conf
+sysctl -p
+echo "Se actualizo el sistema " >> /var/log/walter.log
+
+echo "/var/log/messages {
+    daily
+    rotate 7
+    compress
+    delaycompress
+    missingok
+    notifempty
+}" > /etc/logrotate.d/messages
+
+
+logrotate /etc/logrotate.d/messages
+
+
+DATE=$(date +%Y-%m-%d)
+tar -czvf /var/log/messages-$DATE.tar.gz /var/log/messages.1
+
+
+rm /var/log/messages.1
+echo "Se actualizo el sistema " >> /var/log/walter.log
